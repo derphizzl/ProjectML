@@ -1,8 +1,8 @@
 #include <iostream>
-#include "Algorithms/Algorithms.h"
+#include "Algorithms.h"
 
 #include <opencv2/opencv.hpp>
-#include "Primitive/Matrix.h"  // your custom Matrix<T> class
+#include "Matrix.h"
 
 Matrix<uint8_t> readImageToMatrix(const std::string& path) 
 {
@@ -19,7 +19,6 @@ Matrix<uint8_t> readImageToMatrix(const std::string& path)
 
     Matrix<uint8_t> mat(rows, cols);
 
-    // 3. Copy pixel values
     for (int y = 0; y < rows; ++y) 
     {
         for (int x = 0; x < cols; ++x) 
