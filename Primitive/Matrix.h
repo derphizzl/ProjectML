@@ -31,7 +31,7 @@ public:
 
     template <typename Func> void iterate(Func&& cb) 
     {
-       // #pragma omp parallel for collapse(2)
+       #pragma omp parallel for collapse(2)
         for (uint32_t y = 0; y < m_Height; ++y) 
         {
             for (uint32_t x = 0; x < m_Width; ++x) 
