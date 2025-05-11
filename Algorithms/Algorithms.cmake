@@ -1,0 +1,10 @@
+
+list(APPEND HEADERS 
+    ${CMAKE_CURRENT_LIST_DIR}/Algorithms.h
+)
+
+list(APPEND SOURCES
+    ${CMAKE_CURRENT_LIST_DIR}/Algorithms.cpp    
+)
+
+list(APPEND INCPATHS ${CMAKE_CURRENT_LIST_DIR})
