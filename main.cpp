@@ -46,9 +46,12 @@ void showMatrixAsImage(const Matrix<uint8_t>& mat, const std::string& windowName
 
 int main(int argc, char *argv[]) 
 {
-    const std::string imagePath = "/data/local_workspace/007_CV/01_Source/ImageProcessingNoQt/Testimage.png";
-    
+    const std::string imagePath = "Testimage.png";
+   
     Matrix<uint8_t> input = readImageToMatrix(imagePath);
+    input = Algorithms::gaussian(input, 3);
+    showMatrixAsImage(input, "Gaussian");
+
     Matrix<uint8_t> gradientImage = Algorithms::calculateGradient(input);
     
     cv::Mat img = cv::imread(imagePath, cv::IMREAD_GRAYSCALE);

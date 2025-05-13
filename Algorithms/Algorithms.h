@@ -2,6 +2,7 @@
 
 #include "Matrix.h"
 #include <cmath>
+#include <vector>
 #define _USE_MATH_DEFINES
 #include <math.h>
 
@@ -27,14 +28,17 @@ struct Gradient {
     }
 };
 
+
 class Algorithms {
 public:
     static double toDegrees(const double& rad) { return rad * 180.0/M_PI; }
     static double toRadians(const double& degrees) { return degrees * M_PI/180.0; }
     static Matrix<uint8_t> calculateGradient(Matrix<uint8_t>& input);
+    static Matrix<uint8_t> gaussian(Matrix<uint8_t>& input, const uint8_t& kernel_size);
 
 private:
     uint16_t calculateGradientAtPosition(uint32_t y, uint32_t x);
-    static bool Travers(Matrix<Gradient>& gradientMatrix, uint32_t x, uint32_t y);    
+    static bool Travers(Matrix<Gradient>& gradientMatrix, uint32_t x, uint32_t y);   
+    static FilterKernel gaussianKernel(const uint8_t& kernel_size);
 };
 

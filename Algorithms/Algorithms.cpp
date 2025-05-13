@@ -1,6 +1,7 @@
 #include "Algorithms.h"
 #include "Logging.h"
 #include "Matrix.h"
+#include <cwchar>
 
 bool Algorithms::Travers(Matrix<Gradient>& gradientMatrix, uint32_t y, uint32_t x)
 {
@@ -74,7 +75,6 @@ Matrix<uint8_t> Algorithms::calculateGradient(Matrix<uint8_t>& input)
         {                  
 	        gradientField.at(y, x).dx = input.at(y, x + 1) - value;
 			gradientField.at(y, x).dy = input.at(y + 1, x) - value;
-            std::cout << "X: " << x << " Y: " << y;
             // gradientField.at(y, x).dx = 0.5 * (input.at(y, x + 1) - input.at(y, x - 1));
             // gradientField.at(y, x).dy = 0.5 * (input.at(y + 1, x) - input.at(y - 1, x));
         }
@@ -131,13 +131,11 @@ Matrix<uint8_t> Algorithms::calculateGradient(Matrix<uint8_t>& input)
             gradientField.at(y, x).val = 0.0;
             gradientField.at(y, x).Threshold.lowerThreshold = 0.0;
             gradientField.at(y, x).Threshold.higherThreshold = 0.0;
-		}	
-		else if( abs(gradientField.at(y, x).val) >= lower && abs(gradientField.at(y, x).val) < higher )
+		} else if( abs(gradientField.at(y, x).val) >= lower && abs(gradientField.at(y, x).val) < higher )
 		{
             gradientField.at(y, x).Threshold.lowerThreshold = abs(gradientField.at(y, x).val);
             gradientField.at(y, x).Threshold.higherThreshold = 0.0;
-		}
-		else if( abs(gradientField.at(y, x).val) >= higher )
+		} else if( abs(gradientField.at(y, x).val) >= higher )
 		{
             gradientField.at(y, x).Threshold.lowerThreshold = 0.0;
             gradientField.at(y, x).Threshold.higherThreshold = abs(gradientField.at(y, x).val);
@@ -178,4 +176,51 @@ Matrix<uint8_t> Algorithms::calculateGradient(Matrix<uint8_t>& input)
     });
 
     return returnMat;
+}
+
+FilterKernel Algorithms::gaussianKernel(const uint8_t& kernel_size)
+{
+    double sigma = std::max(1.0, kernel_size / 6.0);
+    double s = 2.0 * sigma * sigma;
+    int radius = (kernel_size - 1) / 2;
+
+    FilterKernel kernel(kernel_size, std::vector<double>(kernel_size));
+    double sum = 0.0;
+
+    for (int x = -radius; x <= radius; ++x) 
+    {
+        for (int y = -radius; y <= radius; ++y) 
+        {
+            double r = std::sqrt(x * x + y * y);
+            double value = std::exp(-(r * r) / s) / (M_PI * s);
+            kernel[x + radius][y + radius] = value;
+            sum += value;
+        }
+    }
+
+    for (int i = 0; i < kernel_size; ++i) 
+    {
+        for (int j = 0; j < kernel_size; ++j) 
+        {
+            kernel[i][j] /= sum;
+        }
+    }
+
+    return kernel;
+}
+
+Matrix<uint8_t> Algorithms::gaussian(Matrix<uint8_t>& input, const uint8_t& kernel_size) 
+{
+    Matrix<float> floatInput(input.rows(), input.cols());
+    input.iterate([&](uint8_t value, uint32_t y, uint32_t x) {
+        floatInput.at(y, x) = static_cast<float>(value) * 0.001f;
+    });
+    
+    Matrix<float> blurred = floatInput.convolve(gaussianKernel( kernel_size ));
+    Matrix<uint8_t> result(blurred.rows(), blurred.cols());
+    blurred.iterate([&](float value, uint32_t y, uint32_t x) {
+        result.at(y, x) = static_cast<uint8_t>(value * 1000.0f);
+    });
+
+    return result;
 }

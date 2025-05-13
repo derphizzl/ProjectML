@@ -4,6 +4,9 @@
 #include <vector>
 #include <cstdint>
 #include <omp.h>
+#include <algorithm>
+
+using FilterKernel = std::vector<std::vector<double>>;
 
 template <typename T>
 class Matrix {
@@ -28,7 +31,19 @@ public:
     auto end() { return m_Matrix.end(); }
     auto begin() const { return m_Matrix.begin(); }
     auto end() const { return m_Matrix.end(); }
-
+    
+    Matrix<T>& operator=(const Matrix<T>& other) 
+    {
+        if( this != &other ) 
+        {
+            m_Height = other.m_Height;
+            m_Width = other.m_Width;
+            m_Matrix = other.m_Matrix;
+        }
+        
+        return *this;
+    }
+    
     template <typename Func> void iterate(Func&& cb) 
     {
        #pragma omp parallel for collapse(2)
@@ -51,5 +66,39 @@ public:
                 cb(at(y, x), y, x);
             }
         }
+    }
+
+    Matrix<T> convolve(const FilterKernel& kernel) 
+    {
+        int kernelSize = kernel.size();
+        int kHalf = kernelSize / 2;
+
+        Matrix<T> output(rows(), cols());
+
+        output.iterate([&](T& outVal, uint32_t y, uint32_t x) 
+        {
+            if (y < kHalf || y >= rows() - kHalf ||
+                x < kHalf || x >= cols() - kHalf)
+            {
+                outVal = 0;
+                return;
+            }
+
+            float sum = 0.0f;
+
+            for (int ky = 0; ky < kernelSize; ++ky) 
+            {
+                for (int kx = 0; kx < kernelSize; ++kx) 
+                {
+                    int iy = y + ky - kHalf;
+                    int ix = x + kx - kHalf;
+                    sum += at(iy, ix) * kernel[ky][kx];
+                }
+            }
+
+            outVal = static_cast<T>(std::clamp(sum, 0.0f, 255.0f));
+        });
+
+        return output;
     }
 };
