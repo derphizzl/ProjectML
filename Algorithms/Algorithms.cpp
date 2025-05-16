@@ -13,7 +13,7 @@ bool Algorithms::Travers(Matrix<Gradient>& gradientMatrix, uint32_t y, uint32_t 
 	if( gradientMatrix.at(y, x).visited )
 		return true;
 
-	constexpr float DIR_TOLERANCE = 1.0f;//0.1f;
+	constexpr float DIR_TOLERANCE = 0.1f;
 
 	// Normalize helper
 	auto normalize = [](float dx, float dy) -> std::pair<float, float> {
@@ -61,7 +61,7 @@ bool Algorithms::Travers(Matrix<Gradient>& gradientMatrix, uint32_t y, uint32_t 
 	return false;
 }
 
-Matrix<uint8_t> Algorithms::calculateGradient(Matrix<uint8_t>& input) 
+Matrix<uint8_t> Algorithms::gradientEdgeDetection(Matrix<uint8_t>& input, const uint8_t& lower_threshold, const uint8_t& higher_threshold) 
 {
     Matrix<Gradient> gradientField(input.rows(), input.cols());
     input.iterate([&](uint8_t value, uint32_t y, uint32_t x) 
@@ -70,13 +70,11 @@ Matrix<uint8_t> Algorithms::calculateGradient(Matrix<uint8_t>& input)
         double dx = .0;
         double dy = .0;
 		/* calculate dx and dy */
-        if( x - 1 >= 0 && x + 1 < input.cols() &&
-            y - 1 >= 0 && y + 1 < input.rows() ) 
+        if( static_cast<int>(x) - 1 >= 0 && x + 1 < input.cols() &&
+            static_cast<int>(y) - 1 >= 0 && y + 2 < input.rows() ) 
         {                  
-	        gradientField.at(y, x).dx = input.at(y, x + 1) - value;
-			gradientField.at(y, x).dy = input.at(y + 1, x) - value;
-            // gradientField.at(y, x).dx = 0.5 * (input.at(y, x + 1) - input.at(y, x - 1));
-            // gradientField.at(y, x).dy = 0.5 * (input.at(y + 1, x) - input.at(y - 1, x));
+            gradientField.at(y, x).dx = 0.5 * (input.at(y, x + 1) - input.at(y, x - 1));
+            gradientField.at(y, x).dy = 0.5 * (input.at(y + 1, x) - input.at(y - 1, x));
         }
 
         /* calculate the edge direction */          
@@ -122,8 +120,8 @@ Matrix<uint8_t> Algorithms::calculateGradient(Matrix<uint8_t>& input)
         /* Gradient length */
         gradientField.at(y, x).val = sqrt(gradientField.at(y, x).dx * gradientField.at(y, x).dx + gradientField.at(y, x).dy * gradientField.at(y, x).dy);
 		
-        uint8_t lower = 25;//3;
-        uint8_t higher = 55;//40;
+        uint8_t lower = lower_threshold;
+        uint8_t higher = higher_threshold;
         
         /* Thresholding */
         if( abs(gradientField.at(y, x).val) < lower ) 
@@ -165,8 +163,7 @@ Matrix<uint8_t> Algorithms::calculateGradient(Matrix<uint8_t>& input)
     /* Hysteresis */ 
 	gradientField.iterate([&](Gradient& gradient, uint32_t y, uint32_t x) 
     {
-		// if( gradient.Threshold.higherThreshold > 0.0 )
-			Travers(gradientField, y, x) ? gradientField.at(y, x).binary = 255 : gradientField.at(y, x).binary = 0;
+		Travers(gradientField, y, x) ? gradientField.at(y, x).binary = 255 : gradientField.at(y, x).binary = 0;
 	});
 
     Matrix<uint8_t> returnMat(input.rows(), input.cols());
@@ -178,9 +175,9 @@ Matrix<uint8_t> Algorithms::calculateGradient(Matrix<uint8_t>& input)
     return returnMat;
 }
 
-FilterKernel Algorithms::gaussianKernel(const uint8_t& kernel_size)
+FilterKernel Algorithms::gaussianKernel(const uint8_t& kernel_size, const double& sigma_factor)
 {
-    double sigma = std::max(1.0, kernel_size / 6.0);
+    double sigma = std::max(1.0, kernel_size / sigma_factor); //6.0
     double s = 2.0 * sigma * sigma;
     int radius = (kernel_size - 1) / 2;
 
@@ -209,14 +206,14 @@ FilterKernel Algorithms::gaussianKernel(const uint8_t& kernel_size)
     return kernel;
 }
 
-Matrix<uint8_t> Algorithms::gaussian(Matrix<uint8_t>& input, const uint8_t& kernel_size) 
+Matrix<uint8_t> Algorithms::gaussian(Matrix<uint8_t>& input, const uint8_t& kernel_size, const double& sigma_factor) 
 {
     Matrix<float> floatInput(input.rows(), input.cols());
     input.iterate([&](uint8_t value, uint32_t y, uint32_t x) {
         floatInput.at(y, x) = static_cast<float>(value) * 0.001f;
     });
     
-    Matrix<float> blurred = floatInput.convolve(gaussianKernel( kernel_size ));
+    Matrix<float> blurred = floatInput.convolve(gaussianKernel( kernel_size, sigma_factor ));
     Matrix<uint8_t> result(blurred.rows(), blurred.cols());
     blurred.iterate([&](float value, uint32_t y, uint32_t x) {
         result.at(y, x) = static_cast<uint8_t>(value * 1000.0f);
@@ -224,3 +221,39 @@ Matrix<uint8_t> Algorithms::gaussian(Matrix<uint8_t>& input, const uint8_t& kern
 
     return result;
 }
+
+Matrix<uint8_t> Algorithms::laplacianEdgeDetection(Matrix<uint8_t>& input) 
+{
+#if 1
+    std::vector<std::vector<double>> laplacianKernel = 
+    {
+        {  0,  -1,  0 },
+        { -1,   4, -1 },
+        {  0,  -1,  0 }
+    };
+#else
+    std::vector<std::vector<double>> laplacianKernel = 
+    {
+        { -1, -1, -1 },
+        { -1,  8, -1 },
+        { -1, -1, -1 }
+    };
+#endif
+    Matrix<double> doubleInput(input.rows(), input.cols());
+    input.iterate([&](uint8_t value, uint32_t y, uint32_t x) 
+    {
+        doubleInput.at(y, x) = static_cast<double>(value);
+    });
+
+    Matrix<double> convolved = doubleInput.convolve(laplacianKernel);
+
+    Matrix<uint8_t> output(convolved.rows(), convolved.cols());
+    convolved.iterate([&](double val, uint32_t y, uint32_t x) 
+    {
+        double absVal = std::abs(val);
+        output.at(y, x) = static_cast<uint8_t>(std::clamp(absVal, 0.0, 255.0));
+    });
+
+    return output;
+}
+

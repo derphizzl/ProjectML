@@ -68,6 +68,40 @@ public:
         }
     }
 
+    // Matrix<T> convolve(const FilterKernel& kernel) 
+    // {
+    //     int kernelSize = kernel.size();
+    //     int kHalf = kernelSize / 2;
+    //
+    //     Matrix<T> output(rows(), cols());
+    //
+    //     output.iterate([&](T& outVal, uint32_t y, uint32_t x) 
+    //     {
+    //         if (y < kHalf || y >= rows() - kHalf ||
+    //             x < kHalf || x >= cols() - kHalf)
+    //         {
+    //             outVal = 0;
+    //             return;
+    //         }
+    //
+    //         float sum = 0.0f;
+    //
+    //         for (int ky = 0; ky < kernelSize; ++ky) 
+    //         {
+    //             for (int kx = 0; kx < kernelSize; ++kx) 
+    //             {
+    //                 int iy = y + ky - kHalf;
+    //                 int ix = x + kx - kHalf;
+    //                 sum += at(iy, ix) * kernel[ky][kx];
+    //             }
+    //         }
+    //
+    //         outVal = static_cast<T>(std::clamp(sum, 0.0f, 255.0f));
+    //     });
+    //
+    //     return output;
+    // }
+
     Matrix<T> convolve(const FilterKernel& kernel) 
     {
         int kernelSize = kernel.size();
@@ -77,21 +111,15 @@ public:
 
         output.iterate([&](T& outVal, uint32_t y, uint32_t x) 
         {
-            if (y < kHalf || y >= rows() - kHalf ||
-                x < kHalf || x >= cols() - kHalf)
-            {
-                outVal = 0;
-                return;
-            }
-
             float sum = 0.0f;
 
             for (int ky = 0; ky < kernelSize; ++ky) 
             {
                 for (int kx = 0; kx < kernelSize; ++kx) 
                 {
-                    int iy = y + ky - kHalf;
-                    int ix = x + kx - kHalf;
+                    int iy = std::clamp<int>(y + ky - kHalf, 0, rows() - 1);
+                    int ix = std::clamp<int>(x + kx - kHalf, 0, cols() - 1);
+
                     sum += at(iy, ix) * kernel[ky][kx];
                 }
             }
@@ -101,4 +129,5 @@ public:
 
         return output;
     }
+
 };
